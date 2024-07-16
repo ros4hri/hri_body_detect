@@ -1,14 +1,16 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>hri_fullbody</name>
+  <name>hri_body_detect</name>
   <version>2.0.1</version>
-  <description>ROS node implementing 2D/3D full-body pose estimation, using Google Mediapipe. Part of ROS4HRI.</description>
+  <description>ROS node implementing multibody 2D/3D full-body pose estimation, using Google Mediapipe. Part of ROS4HRI.</description>
   <author email="severin.lemaignan@pal-robotics.com">Séverin Lemaignan</author>
   <author email="lorenzo.ferrini@pal-robotics.com">Lorenzo Ferrini</author>
+  <author email="ferran.gebelli@pal-robotics.com">Ferran Gebellí</author>
   <license>Apache License 2.0</license>
   <maintainer email="severin.lemaignan@pal-robotics.com">Séverin Lemaignan</maintainer>
   <maintainer email="lorenzo.ferrini@pal-robotics.com">Lorenzo Ferrini</maintainer>
+  <maintainer email="ferran.gebelli@pal-robotics.com">Ferran Gebellí</maintainer>
 
   <exec_depend>builtin_interfaces</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
@@ -26,6 +28,7 @@
   <exec_depend>python3-opencv</exec_depend>
   <exec_depend>python3-protobuf</exec_depend>
   <exec_depend>python3-transforms3d</exec_depend>
+  <exec_depend>python3-lap</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>rcl_interfaces</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>

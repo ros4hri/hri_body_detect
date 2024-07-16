@@ -1,4 +1,4 @@
-hri_fullbody
+hri_bodies_detect
 =======================
 
 ![skeleton detection](doc/skeleton_detection.png)
@@ -13,31 +13,18 @@ Overview
 > this document.
 
 
-`hri_fullbody` is a [ROS4HRI](https://wiki.ros.org/hri)-compatible
-3D body pose estimation node.
+`hri_body_detect` is a [ROS4HRI](https://wiki.ros.org/hri)-compatible
+2D and 3D body pose estimation node.
 
 It is built on top of [Google Mediapipe 3D body pose estimation](https://google.github.io/mediapipe/solutions/pose.html).
 
-The node provides the 3D pose estimation for the detected humans 
+The node provides the 2D and 3D pose estimation for the detected humans 
 in the scene, implementing a robust solution to self-occlusions.
 
-This node can be used in two different modes: single body and multi-body.
-In the former case, the node performs the whole body detection pipeline, 
+This node performs the body-pose detection pipeline, 
 publishing information under the ROS4HRI naming convention regarding
-the body id (on the `/humans/bodies/tracked` topic), the body bounding box,
-and the jointstate of the body's skeleton. In the latter, the node only 
-publishes jointstate information, expecting body detection to be performed
-by another node and subscribing to `/humans/bodies/tracked` to read the ids
-of the currently tracked bodies.
-
-These two modes are required since Mediapipe body estimation
-is not able to estimate more than one body pose per frame. 
-Therefore, in case we want more than one body pose estimated, 
-the adopted strategy is to rely on some other package implementing a human
-body detection (and tracking in the best case) algorithm.
-Such package should provide the `hri_fullbody detect` node the IDs of the
-detected bodies and the relative images, cropped from the original image
-following the detected bounding boxes.
+the body ids (on the `/humans/bodies/tracked` topic), the bodies bounding box,
+and the jointstate of the bodys' skeleton.
 
 To estimate the body position, the node does not need a RGB-D camera,
 only RGB is required. However, using RGB-D camera provides a more 
@@ -51,7 +38,10 @@ to properly calibrate your camera.
 Launch
 ------
 
-`ros2 launch hri_fullbody hri_fullbody.launch.py <parameters>`
+The launch file `hri_body_detect.launch.py` is intended to be used in PAL robots following PAPS-007
+For general usage, use `hri_body_detect_with_args.launch.py`:
+
+`ros2 launch hri_body_detect hri_body_detect_with_args.launch.py <parameters>`
 
 ROS API
 -------
@@ -60,8 +50,6 @@ ROS API
 
 #### Node parameters:
 
-- `single_body` (default: `True`): whether or not running in single
-  body mode (see above for the single body vs multi-body modes). 
 - `use_depth` (default: `False`): whether or not to rely on depth images 
   for estimating body movement in the scene. When this is `False`, the node
   estimates the body position in the scene solving a P6P problem for the
@@ -71,15 +59,20 @@ ROS API
   representing the body skeleton directly using the raw results from mediapipe
   3D body pose estimation. These debug frames are *not* oriented to align 
   with the body links (ie, only the 3D location of the frame is useful).
-- `human_description_<body_id>` (read-only): the URDF generated for `body_<body_id>`.
-  The node generates a URDF for each detected body and uses them to
-  perform kinematically-consistent 3D body pose estimation.
+- `detection_conf_thresh` (default: `0.5`): threshold to apply to the mediapipe
+  pose detection. Higher thresholds will lead to less detected bodies, but also
+  less false positives.
+- `use_cmc` (default: `False`): whether or not to enable camera motion
+  compensation in the tracker. It compensates the movement of the camera respect
+  to the world during tracking, but it is CPU intensive as it is computing the
+  optical flow.
 
-#### hri_fullbody.launch parameters:
+#### hri_body_detect_with_args.launch parameters:
 
-- `single_body` (default: `True`): equivalent to `single_body` node parameter.
 - `use_depth` (default: `False`): equivalent to `use_depth` node parameter.
 - `stickman_debug` (default: `False`): equivalent to `stickman_debug` node parameter.
+- `detection_conf_thresh` (default: `0.5`): equivalent to `detection_conf_thresh` node parameter.
+- `use_cmc` (default: `False`): equivalent to `use_cmc` node parameter.
 - `rgb_camera` (default: ` `): rgb camera topics namespace.
 - `rgb_camera_topic` (default: `$(arg rgb_camera)/image_raw`): rgb camera
   raw image topic. 
@@ -93,7 +86,7 @@ ROS API
 
 ### Topics
 
-`hri_fullbody` follows the ROS4HRI conventions (REP-155). In particular, 
+`hri_body_detect` follows the ROS4HRI conventions (REP-155). In particular, 
 refer to the REP to know the list and position of the 2D/3D skeleton 
 points published by the node.
 
@@ -108,28 +101,18 @@ points published by the node.
 - `/depth_info`
   ([sensor_msgs/CameraInfo](https://docs.ros2.org/latest/api/sensor_msgs/msg/CameraInfo.html)):
   depth camera meta information
-
-##### Single body mode only:
-
 - `/image`
   ([sensor_msgs/Image](https://docs.ros2.org/latest/api/sensor_msgs/msg/Image.html)):
   rgb image, processed for body detection and 3D body pose estimation.
 
-##### Multi-body mode only:
-
-- `/humans/bodies/tracked`
-  ([hri_msgs/IdsList](http://docs.ros.org/en/api/hri_msgs/html/msg/IdsList.html)):
-  list of the bodies currently detected.
-- `/humans/bodies/<body_id>/cropped`
-  ([sensor_msgs/Image](https://docs.ros2.org/latest/api/sensor_msgs/msg/Image.html)):
-  image used to estimate the 3D body pose.
-- `/humans/bodies/<body_id>/roi`
-  ([hri_msgs/NormalizedRegionOfInterest2D](http://docs.ros.org/en/noetic/api/hri_msgs/html/msg/NormalizedRegionOfInterest2D.html)):
-  body bounding box in normalized image coordinates.
 
 
 #### Published topics
 
+- `/humans/bodies/tracked`
+  ([hri_msgs/IdsList](http://docs.ros.org/en/api/hri_msgs/html/msg/IdsList.html)):
+  list of the bodies currently detected. There will be only
+  one body in the list.
 - `/humans/bodies/<body_id>/skeleton2d`
   ([hri_msgs/Skeleton2D](http://docs.ros.org/en/api/hri_msgs/html/msg/Skeleton2D.html)):
   detected 2D skeleton points.
@@ -143,16 +126,12 @@ points published by the node.
 - `/humans/bodies/<body_id>/velocity`:
   ([geometry_msgs/TwistStamped](https://docs.ros2.org/latest/api/geometry_msgs/msg/TwistStamped.html)):
   filtered body velocity. Only published when `use_depth = True`.
-
-##### Single body mode only:
-
-- `/humans/bodies/tracked`
-  ([hri_msgs/IdsList](http://docs.ros.org/en/api/hri_msgs/html/msg/IdsList.html)):
-  list of the bodies currently detected. There will be only
-  one body in the list.
 - `/humans/bodies/<body_id>/roi`
   ([hri_msgs/NormalizedRegionOfInterest2D](http://docs.ros.org/en/noetic/api/hri_msgs/html/msg/NormalizedRegionOfInterest2D.html)):
   body bounding box in normalized image coordinates.
+- `/humans/bodies/<body_id>/urdf`
+  ([std_msgs/String](https://docs.ros2.org/latest/api/std_msgs/msg/String.html)):
+  body URDF.
 
 Visualization
 -------------

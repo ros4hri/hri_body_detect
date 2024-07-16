@@ -1,0 +1,2 @@
+hri_body_detect:
+  launch: "hri_body_detect hri_body_detect.launch.py"

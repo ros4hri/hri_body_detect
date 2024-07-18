@@ -1,0 +1,11 @@
+/hri_body_detect:
+  ros__parameters:
+    use_depth: False # if true, uses the depth image to improve the body pose estimation
+    stickman_debug: False # if true, publishes debugging tf frames starting from the raw values of the mediapipe 3d pose estimation
+    detection_conf_thresh: 0.5 # mediapipe parameter -- skeleton detection confidence threshold
+    use_cmc: False # whether or not using camera motion compensation for tracking
+  remappings:
+    image: /image
+    camera_info: /camera_info
+    depth_image: /depth_image
+    depth_info: /depth_info

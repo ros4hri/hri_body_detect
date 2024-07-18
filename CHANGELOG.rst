@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.0.0 (2024-07-18)
+------------------
 * un-exposed the diagnostic rate
 * added launch-pal dependency
 * pap7 conformant

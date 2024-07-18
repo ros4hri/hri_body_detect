@@ -27,6 +27,9 @@ from lifecycle_msgs.msg import State
 # body detection processing time in ms triggering a diagnostic warning
 BODY_DETECTION_PROC_TIME_WARN = 1000.
 
+# diagnostic period
+DIAGNOSTIC_PERIOD = 1.
+
 
 class MultibodyNode(Node):
     """Node for detecting multiple bodies."""
@@ -57,12 +60,6 @@ class MultibodyNode(Node):
             ParameterDescriptor(
                 description="Whether or not to enable camera motion compensation in the tracker."))
 
-        self.declare_parameter(
-            "diagnostic_period",
-            1.,
-            ParameterDescriptor(
-                description="Diagnostic period"))
-
         self.get_logger().info('State: Unconfigured.')
 
     def __del__(self):
@@ -79,7 +76,6 @@ class MultibodyNode(Node):
         self.stickman_debug = self.get_parameter("stickman_debug").value
         self.detection_conf_thresh = self.get_parameter("detection_conf_thresh").value
         self.use_cmc = self.get_parameter("use_cmc").value
-        self.diag_period = self.get_parameter("diagnostic_period").value
 
         self.detector = MultibodyDetector(self,
                                           self.use_depth,
@@ -96,7 +92,7 @@ class MultibodyNode(Node):
         return super().on_deactivate(state)
 
     def on_activate(self, state: LifecycleState) -> TransitionCallbackReturn:
-        self.diag_timer = self.create_timer(self.diag_period, self.do_diagnostics)
+        self.diag_timer = self.create_timer(DIAGNOSTIC_PERIOD, self.do_diagnostics)
         self.diag_pub = self.create_publisher(DiagnosticArray,
                                               "/diagnostics",
                                               1)

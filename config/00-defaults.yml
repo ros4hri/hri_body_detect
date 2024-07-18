@@ -4,7 +4,6 @@
     stickman_debug: False # if true, publishes debugging tf frames starting from the raw values of the mediapipe 3d pose estimation
     detection_conf_thresh: 0.5 # mediapipe parameter -- skeleton detection confidence threshold
     use_cmc: False # whether or not using camera motion compensation for tracking
-    diagnostic_period: 1.0 # diagnostic messages publishing rate
   remappings:
     image: /image
     camera_info: /camera_info

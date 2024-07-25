@@ -2,6 +2,13 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* properly killing the robot_state_publishers
+  spawned for the detected bodies
+* handling tracking errors
+* Contributors: ferrangebelli, lorenzoferrini
+
 3.0.0 (2024-07-18)
 ------------------
 * un-exposed the diagnostic rate

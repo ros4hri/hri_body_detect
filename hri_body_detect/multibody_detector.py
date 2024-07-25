@@ -15,6 +15,7 @@
 
 import mediapipe as mp
 import io
+import psutil
 from ikpy import chain
 from hri_body_detect.jointstate import compute_jointstate, \
     HUMAN_JOINT_NAMES
@@ -398,7 +399,11 @@ class SingleBody:
 
     def unregister(self):
         """Kill the robot state publisher."""
-        self.proc.terminate()
+        process = psutil.Process(self.proc.pid)
+        for proc in process.children(recursive=True):
+            proc.kill()
+        process.kill()
+        self.proc.wait()
         self.node.get_logger().info('unregistered '+self.body_id)
 
     def face_to_body_position_estimation(self,
@@ -944,6 +949,14 @@ class SingleBody:
 
         self.roi_pub.publish(roi)
 
+    def __del__(self):
+        self.node.destroy_publisher(self.roi_pub)
+        self.node.destroy_publisher(self.skel_pub)
+        self.node.destroy_publisher(self.js_pub)
+        self.node.destroy_publisher(self.urdf_pub)
+        self.node.destroy_publisher(self.body_filtered_position_pub)
+        self.node.destroy_publisher(self.velocity_pub)
+
 
 class MultibodyDetector:
     """Class managing the holistic pose estimation process."""
@@ -1068,6 +1081,8 @@ class MultibodyDetector:
         image_rgb = cv2.cvtColor(image_rgb, cv2.COLOR_BGR2RGB)
         rgb_frame = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
 
+        # we don't use the time in the header to make sure it is monotically increasing
+        # a requirement from mediapipe
         frame_timestamp_ms = int(self.node.get_clock().now().nanoseconds / 1000000)
 
         try:
@@ -1146,7 +1161,16 @@ class MultibodyDetector:
                                     int(self.y_max_person*self.img_height), 1, 0]
 
         # Pass the detected bounding boxes to the tracker
-        tracked_output = self.tracker.update(dets_array, image_rgb)
+        try:
+            tracked_output = self.tracker.update(dets_array, image_rgb)
+        except (ValueError, IndexError) as e:
+            self.node.get_logger().error(
+                "Error in the tracking process: %s. Resetting the tracker." % str(e))
+            if (self.use_cmc):
+                self.tracker = BoTSORT(BoTTrackerArgs(**{"cmc-method": "sparseOptFlow"}))
+            else:
+                self.tracker = BoTSORT(BoTTrackerArgs())
+            tracked_output = self.tracker.update(dets_array, image_rgb)
 
         # Find a match between the track id and the body id to
         # assign the other attributes apart from the bounding box, e.g. skeleton 2D
@@ -1157,6 +1181,7 @@ class MultibodyDetector:
 
         body_ids_list = IdsList()
         body_ids_list.ids = []
+        body_ids_list.header = header
         output_dict = {}
         for track in tracked_output:
             track_id = track.track_id

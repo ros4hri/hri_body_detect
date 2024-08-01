@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.1.0 (2024-08-01)
+------------------
 * fixing wrong publishing of the body urdf
   we were both publishing the body urdf on
   /humans/bodie/<body_id>/urdf (right) and /robot_description (

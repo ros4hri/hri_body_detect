@@ -33,13 +33,12 @@ import ament_index_python
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 import tf2_ros
 import tf_transformations
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 
 from builtin_interfaces.msg import Time as TimeInterface
-from std_msgs.msg import Header, String
+from std_msgs.msg import Header
 from sensor_msgs.msg import Image, CameraInfo
 from sensor_msgs.msg import JointState
 from hri_msgs.msg import Skeleton2D, NormalizedPointOfInterest2D, \
@@ -273,7 +272,7 @@ class SingleBody:
 
         self.js_topic = "/humans/bodies/" + body_id + "/joint_states"
         skel_topic = "/humans/bodies/" + body_id + "/skeleton2d"
-        urdf_topic = "/humans/bodies/" + body_id + "/urdf"
+        self.urdf_topic = "/humans/bodies/" + body_id + "/urdf"
 
         self.skel_pub = self.node.create_publisher(Skeleton2D,
                                                    skel_topic,
@@ -282,13 +281,6 @@ class SingleBody:
         self.js_pub = self.node.create_publisher(JointState,
                                                  self.js_topic,
                                                  1)
-
-        latching_qos = QoSProfile(
-            depth=1,
-            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
-        self.urdf_pub = self.node.create_publisher(String,
-                                                   urdf_topic,
-                                                   qos_profile=latching_qos)
 
         self.roi_pub = self.node.create_publisher(
             NormalizedRegionOfInterest2D,
@@ -345,7 +337,6 @@ class SingleBody:
                                     "<%s> (param name: human_description_%s)" % (
                                         self.body_id, self.body_id))
         self.human_description = "human_description_%s" % self.body_id
-        self.urdf_pub.publish(String(data=self.urdf))
 
         self.urdf_file = io.StringIO(self.urdf)
         self.r_arm_chain = chain.Chain.from_urdf_file(
@@ -391,7 +382,9 @@ class SingleBody:
                "-p",
                "robot_description:=%s" % self.urdf,
                "-r",
-               "joint_states:="+self.js_topic
+               "joint_states:="+self.js_topic,
+               "-r",
+               "robot_description:="+self.urdf_topic
                ]
         self.proc = subprocess.Popen(cmd,
                                      stdout=subprocess.DEVNULL,
@@ -953,7 +946,6 @@ class SingleBody:
         self.node.destroy_publisher(self.roi_pub)
         self.node.destroy_publisher(self.skel_pub)
         self.node.destroy_publisher(self.js_pub)
-        self.node.destroy_publisher(self.urdf_pub)
         self.node.destroy_publisher(self.body_filtered_position_pub)
         self.node.destroy_publisher(self.velocity_pub)
 

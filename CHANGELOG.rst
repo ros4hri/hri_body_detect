@@ -2,6 +2,18 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fixing wrong publishing of the body urdf
+  we were both publishing the body urdf on
+  /humans/bodie/<body_id>/urdf (right) and /robot_description (
+  very very wrong, criminal stuff, death penalty in some countries).
+  This was due to the fact that the robot_state_publisher publishes
+  the input urdf on /robot_description and we (pluralis maiestatis,
+  the fault is on the same person writing this long commit message)
+  did not think about it.
+* Contributors: lorenzoferrini
+
 3.0.1 (2024-07-25)
 ------------------
 * properly killing the robot_state_publishers

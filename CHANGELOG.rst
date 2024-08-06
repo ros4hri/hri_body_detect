@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.1.1 (2024-08-06)
+------------------
 * Merge branch 'fix-monotically-increasing' into 'humble-devel'
 * fix to make sure that the timestamp in ms 
   passed to mediapipe is monotocally increasing

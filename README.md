@@ -1,4 +1,4 @@
-hri_bodies_detect
+hri_body_detect
 =======================
 
 ![skeleton detection](doc/skeleton_detection.png)

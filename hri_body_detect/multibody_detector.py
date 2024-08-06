@@ -982,6 +982,7 @@ class MultibodyDetector:
         self.start_skipping_ts = self.node.get_clock().now()
         self.detection_start_proc_time = self.node.get_clock().now()
         self.detection_proc_duration = rclpy.duration.Duration(seconds=0.)
+        self.last_frame_timestamp_ms = 0
 
         self.bodies = {}
 
@@ -1076,22 +1077,21 @@ class MultibodyDetector:
         # we don't use the time in the header to make sure it is monotically increasing
         # a requirement from mediapipe
         frame_timestamp_ms = int(self.node.get_clock().now().nanoseconds / 1000000)
-
-        try:
-            results = self.pose_detector.detect_for_video(rgb_frame,
-                                                          frame_timestamp_ms)
-        except RuntimeError as err:
-            if 'InverseMatrixCalculator' in str(err):
-                self.node.get_logger().warning(
-                    "Matrix inversion error in processing the current image,\
-                     resetting mediapipe holistic")
-                self.processing_lock.release()
-                self.pose_detector = PoseLandmarker.create_from_options(
-                    self.options)
-                return
-            else:
-                raise
-
+        if frame_timestamp_ms > self.last_frame_timestamp_ms:
+            try:
+                results = self.pose_detector.detect_for_video(rgb_frame, frame_timestamp_ms)
+            except RuntimeError as err:
+                if 'InverseMatrixCalculator' in str(err):
+                    self.node.get_logger().warning(
+                        "Matrix inversion error in processing the current image,\
+                        resetting mediapipe holistic")
+                    self.processing_lock.release()
+                    self.pose_detector = PoseLandmarker.create_from_options(
+                        self.options)
+                    return
+                else:
+                    raise
+        self.last_frame_timestamp_ms = frame_timestamp_ms
         self.processing_lock.release()
 
         image_rgb.flags.writeable = True

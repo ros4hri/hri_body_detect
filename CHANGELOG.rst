@@ -2,6 +2,11 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* rename diagnostics msg to match documentation (and diagnostic_aggregator) categories
+* Contributors: Séverin Lemaignan
+
 3.1.1 (2024-08-06)
 ------------------
 * Merge branch 'fix-monotically-increasing' into 'humble-devel'

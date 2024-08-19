@@ -120,7 +120,7 @@ class MultibodyNode(Node):
 
         proc_time = self.detector.get_proc_time().nanoseconds/1e9
 
-        msg = DiagnosticStatus(name="Social perception: Body analysis: Skeleton extraction",
+        msg = DiagnosticStatus(name="/social_perception/bodies/hri_body_detect",
                                hardware_id="none")
 
         if self.detector.check_timeout():
@@ -133,7 +133,7 @@ class MultibodyNode(Node):
             msg.level = DiagnosticStatus.OK
 
         msg.values = [
-            KeyValue(key="Package name", value='hri_body_detect'),
+            KeyValue(key="Module name", value='hri_body_detect'),
             KeyValue(key="Currently detected bodies",
                      value=str(len(self.detector.bodies))),
             KeyValue(key="Detection processing time",

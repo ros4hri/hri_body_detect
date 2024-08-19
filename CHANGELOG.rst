@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.1.2 (2024-08-19)
+------------------
 * rename diagnostics msg to match documentation (and diagnostic_aggregator) categories
 * Contributors: Séverin Lemaignan
 

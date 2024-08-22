@@ -2,6 +2,18 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge branch 'fix-non-initialized-variable' into 'humble-devel'
+  fixing error - non initialized variable
+  See merge request ros4hri/hri_body_detect!7
+* fixing error - non initialized variable
+  in the detect function, it might happen that no results are
+  processed (due to the requirement of monotonically increasing
+  timestamps). In this case, we are now skipping any further
+  processing of the results variable.
+* Contributors: Séverin Lemaignan, lorenzoferrini
+
 3.1.2 (2024-08-19)
 ------------------
 * rename diagnostics msg to match documentation (and diagnostic_aggregator) categories

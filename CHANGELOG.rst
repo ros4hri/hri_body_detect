@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.1.3 (2024-08-22)
+------------------
 * Merge branch 'fix-non-initialized-variable' into 'humble-devel'
   fixing error - non initialized variable
   See merge request ros4hri/hri_body_detect!7

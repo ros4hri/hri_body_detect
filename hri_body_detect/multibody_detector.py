@@ -1074,6 +1074,8 @@ class MultibodyDetector:
         image_rgb = cv2.cvtColor(image_rgb, cv2.COLOR_BGR2RGB)
         rgb_frame = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
 
+        results = None
+
         # we don't use the time in the header to make sure it is monotically increasing
         # a requirement from mediapipe
         frame_timestamp_ms = int(self.node.get_clock().now().nanoseconds / 1000000)
@@ -1096,6 +1098,9 @@ class MultibodyDetector:
 
         image_rgb.flags.writeable = True
         self.image = image_rgb
+
+        if results is None:
+            return
 
         pose_kpt_list = []
         pose_kpt_world_list = []

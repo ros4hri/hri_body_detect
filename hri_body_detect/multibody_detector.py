@@ -36,6 +36,7 @@ from rclpy.node import Node
 import tf2_ros
 import tf_transformations
 from message_filters import ApproximateTimeSynchronizer, Subscriber
+from rclpy.qos import qos_profile_sensor_data
 
 from builtin_interfaces.msg import Time as TimeInterface
 from std_msgs.msg import Header
@@ -1004,7 +1005,7 @@ class MultibodyDetector:
             self.node,
             Image,
             "/image",
-            qos_profile=1)
+            qos_profile=qos_profile_sensor_data)
 
         if self.use_depth:
             # Here the code to detect one person only with depth information
@@ -1015,17 +1016,17 @@ class MultibodyDetector:
                         self.node,
                         CameraInfo,
                         "/camera_info",
-                        qos_profile=1),
+                        qos_profile=qos_profile_sensor_data),
                     Subscriber(
                         self.node,
                         Image,
                         "/depth_image",
-                        qos_profile=1),
+                        qos_profile=qos_profile_sensor_data),
                     Subscriber(
                         self.node,
                         CameraInfo,
                         "/depth_info",
-                        qos_profile=1)
+                        qos_profile=qos_profile_sensor_data)
                 ],
                 10,
                 0.1,
@@ -1040,7 +1041,7 @@ class MultibodyDetector:
                         self.node,
                         CameraInfo,
                         "/camera_info",
-                        qos_profile=1)
+                        qos_profile=qos_profile_sensor_data)
                 ],
                 10,
                 0.2

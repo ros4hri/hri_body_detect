@@ -2,6 +2,11 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Changed quality of service to sensor for camera-realated subscribers
+* Contributors: Luka Juricic, ferrangebelli
+
 3.1.3 (2024-08-22)
 ------------------
 * Merge branch 'fix-non-initialized-variable' into 'humble-devel'

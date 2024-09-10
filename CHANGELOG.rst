@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.1.4 (2024-09-10)
+------------------
 * Changed quality of service to sensor for camera-realated subscribers
 * Contributors: Luka Juricic, ferrangebelli
 

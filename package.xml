@@ -24,7 +24,13 @@
   <exec_depend>launch_pal</exec_depend>
   <exec_depend>message_filters</exec_depend>
   <exec_depend>python3-ikpy</exec_depend>
-  <exec_depend>python3-mediapipe</exec_depend>
+
+  <!-- PAL packages mediapipe as a debian. If the package is not available, use the standard ROS
+  rosdep key (that install mediapipe via pip). 
+  -->
+  <exec_depend condition="$PAL_DISTRO != ''">python3-mediapipe</exec_depend>
+  <exec_depend condition="$PAL_DISTRO == ''">python3-mediapipe-pip</exec_depend>
+
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
   <exec_depend>python3-protobuf</exec_depend>

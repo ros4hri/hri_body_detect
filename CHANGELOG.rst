@@ -2,6 +2,12 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* moving initialization of the internal processing stamp
+* deps: use python3-mediapipe-pip outisde of PAL environment
+* Contributors: Séverin Lemaignan, ferrangebelli, lorenzoferrini
+
 3.1.4 (2024-09-10)
 ------------------
 * Changed quality of service to sensor for camera-realated subscribers

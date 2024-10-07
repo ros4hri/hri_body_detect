@@ -1081,6 +1081,7 @@ class MultibodyDetector:
         # a requirement from mediapipe
         frame_timestamp_ms = int(self.node.get_clock().now().nanoseconds / 1000000)
         if frame_timestamp_ms > self.last_frame_timestamp_ms:
+            self.last_frame_timestamp_ms = frame_timestamp_ms
             try:
                 results = self.pose_detector.detect_for_video(rgb_frame, frame_timestamp_ms)
             except RuntimeError as err:
@@ -1094,7 +1095,6 @@ class MultibodyDetector:
                     return
                 else:
                     raise
-        self.last_frame_timestamp_ms = frame_timestamp_ms
         self.processing_lock.release()
 
         image_rgb.flags.writeable = True

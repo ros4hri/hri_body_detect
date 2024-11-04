@@ -1377,11 +1377,6 @@ class MultibodyDetector:
         bodies_rois = {}
         for i in input_entry_to_body_id:
             body_id = input_entry_to_body_id[i]
-            """
-            self.bodies[body_id].process(
-                pose_kpt_list[i], pose_kpt_world_list[i], dets_array[i, :4],
-                header, self.rgb_info, self.depth_info, self.image_depth)
-            """
             # if the wrist coordinates from the skeleton are not out of the frame
             # we store them to evaluate which hand they correspond to
             if ((pose_kpt_list[i][MP_LEFT_WRIST]['x'] >= 0)
@@ -1397,20 +1392,6 @@ class MultibodyDetector:
                 right_wrists_bodies[body_id] = np.array([pose_kpt_list[i][MP_RIGHT_WRIST]['x'],
                                                          pose_kpt_list[i][MP_RIGHT_WRIST]['y']])
             bodies_rois[body_id] = dets_array[i, :4]
-
-        # Remove bodies that have not been present for a while
-        bodies_to_remove = []
-        for body_id in self.bodies:
-            if body_id not in body_ids_list.ids and header.stamp.sec \
-                    - self.bodies[body_id].last_stamp.sec > self.max_lost_time:
-                self.bodies[body_id].unregister()
-                bodies_to_remove.append(body_id)
-                if body_id in self.ids_dict.values():
-                    key = list(self.ids_dict.keys())[list(self.ids_dict.values()).index(body_id)]
-                    del self.ids_dict[key]
-        for body in bodies_to_remove:
-            if body in self.bodies:
-                del self.bodies[body]
 
         left_wrists_ids = []  # we store an ID corresponding to the detected hands
         right_wrists_ids = []
@@ -1458,6 +1439,20 @@ class MultibodyDetector:
                 self.bodies[body_id].process(
                     pose_kpt_list[i], pose_kpt_world_list[i], dets_array[i, :4],
                     header, self.rgb_info, self.depth_info, self.image_depth)
+
+        # Remove bodies that have not been present for a while
+        bodies_to_remove = []
+        for body_id in self.bodies:
+            if body_id not in body_ids_list.ids and header.stamp.sec \
+                    - self.bodies[body_id].last_stamp.sec > self.max_lost_time:
+                self.bodies[body_id].unregister()
+                bodies_to_remove.append(body_id)
+                if body_id in self.ids_dict.values():
+                    key = list(self.ids_dict.keys())[list(self.ids_dict.values()).index(body_id)]
+                    del self.ids_dict[key]
+        for body in bodies_to_remove:
+            if body in self.bodies:
+                del self.bodies[body]
 
         self.detection_proc_duration = (
             self.node.get_clock().now() - self.detection_start_proc_time)

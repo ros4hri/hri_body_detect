@@ -40,8 +40,7 @@ from rclpy.qos import qos_profile_sensor_data
 
 from builtin_interfaces.msg import Time as TimeInterface
 from std_msgs.msg import Header
-from sensor_msgs.msg import Image, CameraInfo
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import CameraInfo, CompressedImage, Image, JointState
 from hri_msgs.msg import Skeleton2D, NormalizedPointOfInterest2D, \
     NormalizedRegionOfInterest2D, IdsList
 from geometry_msgs.msg import TwistStamped, PointStamped, TransformStamped
@@ -956,12 +955,14 @@ class MultibodyDetector:
 
     def __init__(self,
                  node: Node,
+                 image_compressed: bool,
                  use_depth: bool,
                  stickman_debug: bool,
                  detection_conf_thresh: float,
                  use_cmc: bool):
 
         self.node = node
+        self.image_compressed = image_compressed
         self.use_depth = use_depth
         self.stickman_debug = stickman_debug
         self.detection_conf_thresh = detection_conf_thresh
@@ -1001,31 +1002,33 @@ class MultibodyDetector:
 
         self.br = CvBridge()
 
+        image_topic = node.resolve_topic_name('image')
         self.image_subscriber = Subscriber(
             self.node,
-            Image,
-            "/image",
+            CompressedImage if self.image_compressed else Image,
+            f'{image_topic}/compressed' if self.image_compressed else image_topic,
             qos_profile=qos_profile_sensor_data)
 
         if self.use_depth:
             # Here the code to detect one person only with depth information
+            depth_topic = node.resolve_topic_name('depth_image')
             self.tss = ApproximateTimeSynchronizer(
                 [
                     self.image_subscriber,
                     Subscriber(
                         self.node,
                         CameraInfo,
-                        "/camera_info",
+                        "camera_info",
                         qos_profile=qos_profile_sensor_data),
                     Subscriber(
                         self.node,
-                        Image,
-                        "/depth_image",
+                        CompressedImage if self.image_compressed else Image,
+                        f'{depth_topic}/compressed' if self.image_compressed else depth_topic,
                         qos_profile=qos_profile_sensor_data),
                     Subscriber(
                         self.node,
                         CameraInfo,
-                        "/depth_info",
+                        "depth_info",
                         qos_profile=qos_profile_sensor_data)
                 ],
                 10,
@@ -1248,12 +1251,15 @@ class MultibodyDetector:
             self.node.get_clock().now() - self.detection_start_proc_time)
 
     def image_callback_depth(self,
-                             rgb_img: Image,
+                             rgb_img: CompressedImage | Image,
                              rgb_info: CameraInfo,
-                             depth_img: Image,
+                             depth_img: CompressedImage | Image,
                              depth_info: CameraInfo):
         """Handle incoming RGB and depth images (single person)."""
-        rgb_img = self.br.imgmsg_to_cv2(rgb_img, desired_encoding="bgr8")
+        if self.image_compressed:
+            rgb_img = self.br.compressed_imgmsg_to_cv2(rgb_img, desired_encoding="bgr8")
+        else:
+            rgb_img = self.br.imgmsg_to_cv2(rgb_img, desired_encoding="bgr8")
 
         if not hasattr(self, 'depth_encoding'):
             self.depth_encoding = depth_img.encoding
@@ -1262,7 +1268,12 @@ class MultibodyDetector:
             raise ValueError('Unexpected encoding {}. '.format(self.depth_encoding) +
                              'Depth encoding should be 16UC1 or `32FC1`.')
 
-        self.image_depth = self.br.imgmsg_to_cv2(depth_img, desired_encoding=self.depth_encoding)
+        if self.image_compressed:
+            self.image_depth = self.br.compressed_imgmsg_to_cv2(
+                depth_img, desired_encoding=self.depth_encoding)
+        else:
+            self.image_depth = self.br.imgmsg_to_cv2(
+                depth_img, desired_encoding=self.depth_encoding)
         if _builtin_time_to_secs(depth_info.header.stamp) \
                 > _builtin_time_to_secs(rgb_info.header.stamp):
             header = copy.copy(depth_info.header)
@@ -1274,10 +1285,13 @@ class MultibodyDetector:
         self.detect(rgb_img, header)
 
     def image_callback_rgb(self,
-                           rgb_img: Image,
+                           rgb_img: CompressedImage | Image,
                            rgb_info: CameraInfo):
         """Handle incoming RGB images."""
-        rgb_img = self.br.imgmsg_to_cv2(rgb_img, desired_encoding="bgr8")
+        if self.image_compressed:
+            rgb_img = self.br.compressed_imgmsg_to_cv2(rgb_img, desired_encoding="bgr8")
+        else:
+            rgb_img = self.br.imgmsg_to_cv2(rgb_img, desired_encoding="bgr8")
         header = copy.copy(rgb_info.header)
         self.rgb_info = rgb_info
         self.depth_encoding = None

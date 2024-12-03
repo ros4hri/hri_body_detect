@@ -37,6 +37,11 @@ class MultibodyNode(Node):
     def __init__(self):
         super().__init__("hri_body_detect")
         self.declare_parameter(
+            "image_compressed",
+            True,
+            ParameterDescriptor(description="Use compressed image transport.")
+        )
+        self.declare_parameter(
             "use_depth",
             False,
             ParameterDescriptor(
@@ -72,12 +77,14 @@ class MultibodyNode(Node):
         return super().on_cleanup(state)
 
     def on_configure(self, state: LifecycleState) -> TransitionCallbackReturn:
+        self.image_compressed = self.get_parameter("image_compressed").value
         self.use_depth = self.get_parameter("use_depth").value
         self.stickman_debug = self.get_parameter("stickman_debug").value
         self.detection_conf_thresh = self.get_parameter("detection_conf_thresh").value
         self.use_cmc = self.get_parameter("use_cmc").value
 
         self.detector = MultibodyDetector(self,
+                                          self.image_compressed,
                                           self.use_depth,
                                           self.stickman_debug,
                                           self.detection_conf_thresh,

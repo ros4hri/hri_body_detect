@@ -50,6 +50,7 @@ ROS API
 
 #### Node parameters:
 
+- `image_compressed` (default, `True`): selects the compressed image transport
 - `use_depth` (default: `False`): whether or not to rely on depth images 
   for estimating body movement in the scene. When this is `False`, the node
   estimates the body position in the scene solving a P6P problem for the
@@ -92,20 +93,28 @@ points published by the node.
 
 #### Subscribed topics
 
-- `/camera_info`
+- `camera_info`
   ([sensor_msgs/CameraInfo](https://docs.ros2.org/latest/api/sensor_msgs/msg/CameraInfo.html)):
   rgb camera meta information
-- `/depth_image`
+- `image`
   ([sensor_msgs/Image](https://docs.ros2.org/latest/api/sensor_msgs/msg/Image.html)):
-  depth image used to estimate the 3D body position with respect to the camera.
-- `/depth_info`
+  only if `image_compressed` is false;
+  rgb image, processed for body detection and 3D body pose estimation.
+- `image/compressed`
+  ([sensor_msgs/CompressedImage](https://docs.ros2.org/latest/api/sensor_msgs/msg/CompressedImage.html)):
+  only if `image_compressed` is true;
+  rgb image, processed for body detection and 3D body pose estimation;
+  note that the suffix `/compressed` is added *after* the remapping is resolved,
+  so you should remap only `image` regardless of the `image_compressed` value.
+- `depth_info`
   ([sensor_msgs/CameraInfo](https://docs.ros2.org/latest/api/sensor_msgs/msg/CameraInfo.html)):
   depth camera meta information
-- `/image`
-  ([sensor_msgs/Image](https://docs.ros2.org/latest/api/sensor_msgs/msg/Image.html)):
-  rgb image, processed for body detection and 3D body pose estimation.
-
-
+- `depth_image/compressed`
+  ([sensor_msgs/CompressedImage](https://docs.ros2.org/latest/api/sensor_msgs/msg/CompressedImage.html)):
+  only if `image_compressed` is true;
+  depth image used to estimate the 3D body position with respect to the camera;
+  note that the suffix `/compressed` is added *after* the remapping is resolved,
+  so you should remap only `depth_image` regardless of the `image_compressed` value.
 
 #### Published topics
 

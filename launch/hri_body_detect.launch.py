@@ -15,43 +15,43 @@
 from launch import LaunchDescription
 from launch.actions import EmitEvent, RegisterEventHandler
 from launch.events import matches_action
+from launch_pal import get_pal_configuration
 from launch_ros.actions import LifecycleNode
 from launch_ros.events.lifecycle import ChangeState
 from launch_ros.event_handlers import OnStateTransition
 from lifecycle_msgs.msg import Transition
-from launch_pal import get_pal_configuration
 
 
 def generate_launch_description():
-
     pkg = 'hri_body_detect'
-    node = 'hri_body_detect'
+    namespace = ''
+    node_name = 'hri_body_detect'
+    node_executable = 'hri_body_detect'
+
     ld = LaunchDescription()
+    config = get_pal_configuration(pkg=pkg, node=node_name, ld=ld)
 
-    config = get_pal_configuration(pkg=pkg, node=node, ld=ld)
-
-    body_detect_node = LifecycleNode(
+    node = LifecycleNode(
         package=pkg,
-        executable='node_pose_detect',
-        namespace='',
-        name=node,
+        executable=node_executable,
+        namespace=namespace,
+        name=node_name,
         parameters=config["parameters"],
         remappings=config["remappings"],
         arguments=config["arguments"],
-    )
+        output='both', emulate_tty=True)
 
     configure_event = EmitEvent(event=ChangeState(
-        lifecycle_node_matcher=matches_action(body_detect_node),
+        lifecycle_node_matcher=matches_action(node),
         transition_id=Transition.TRANSITION_CONFIGURE))
 
     activate_event = RegisterEventHandler(OnStateTransition(
-        target_lifecycle_node=body_detect_node, goal_state='inactive',
+        target_lifecycle_node=node, goal_state='inactive',
         entities=[EmitEvent(event=ChangeState(
-            lifecycle_node_matcher=matches_action(body_detect_node),
-            transition_id=Transition.TRANSITION_ACTIVATE))]))
+            lifecycle_node_matcher=matches_action(node),
+            transition_id=Transition.TRANSITION_ACTIVATE))], handle_once=True))
 
-    ld.add_action(body_detect_node)
+    ld.add_action(node)
     ld.add_action(configure_event)
     ld.add_action(activate_event)
-
     return ld

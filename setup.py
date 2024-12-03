@@ -15,7 +15,6 @@ setup(
             ['config/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/hri_body_detect.launch.py']),
-        ('share/' + package_name + '/launch', ['launch/hri_body_detect_with_args.launch.py']),
         ('share/' + package_name + '/module', ['module/hri_body_detect_module.yaml']),
         ('share/' + package_name + '/weights',
             ['hri_body_detect/weights/pose_landmarker_full.task']),
@@ -31,7 +30,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'node_pose_detect = hri_body_detect.node_pose_detect:main'
+            'hri_body_detect = hri_body_detect.node_pose_detect:main'
         ],
     },
 )

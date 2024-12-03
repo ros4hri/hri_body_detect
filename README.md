@@ -38,10 +38,7 @@ to properly calibrate your camera.
 Launch
 ------
 
-The launch file `hri_body_detect.launch.py` is intended to be used in PAL robots following PAPS-007
-For general usage, use `hri_body_detect_with_args.launch.py`:
-
-`ros2 launch hri_body_detect hri_body_detect_with_args.launch.py <parameters>`
+`ros2 launch hri_body_detect hri_body_detect.launch.py <parameters>`
 
 ROS API
 -------
@@ -67,23 +64,6 @@ ROS API
   compensation in the tracker. It compensates the movement of the camera respect
   to the world during tracking, but it is CPU intensive as it is computing the
   optical flow.
-
-#### hri_body_detect_with_args.launch parameters:
-
-- `use_depth` (default: `False`): equivalent to `use_depth` node parameter.
-- `stickman_debug` (default: `False`): equivalent to `stickman_debug` node parameter.
-- `detection_conf_thresh` (default: `0.5`): equivalent to `detection_conf_thresh` node parameter.
-- `use_cmc` (default: `False`): equivalent to `use_cmc` node parameter.
-- `rgb_camera` (default: ` `): rgb camera topics namespace.
-- `rgb_camera_topic` (default: `$(arg rgb_camera)/image_raw`): rgb camera
-  raw image topic. 
-- `rgb_camera_info` (default: `$(arg rgb_camera)/camera_info`): rgb camera
-  info topic.
-- `depth_camera` (default: ` `): depth camera topics namespace. 
-- `depth_camera_topic` (default: `$(arg depth_camera)/image_rect_raw`): depth 
-  camera rectified raw image topic.
-- `depth_camera_info` (default: `$(arg depth_camera)/camera_info`): depth 
-  camera info topic.
 
 ### Topics
 

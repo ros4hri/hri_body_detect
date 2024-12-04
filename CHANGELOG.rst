@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.2.0 (2024-12-04)
+------------------
 * gesture detection
   Implemented gesture detection for the detected bodies.
 * use uncompressed images by default

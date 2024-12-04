@@ -47,7 +47,7 @@ ROS API
 
 #### Node parameters:
 
-- `image_compressed` (default, `True`): selects the compressed image transport
+- `image_compressed` (default, `False`): selects the compressed image transport
 - `use_depth` (default: `False`): whether or not to rely on depth images 
   for estimating body movement in the scene. When this is `False`, the node
   estimates the body position in the scene solving a P6P problem for the

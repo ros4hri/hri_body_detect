@@ -38,7 +38,7 @@ class MultibodyNode(Node):
         super().__init__("hri_body_detect")
         self.declare_parameter(
             "image_compressed",
-            True,
+            False,
             ParameterDescriptor(description="Use compressed image transport.")
         )
         self.declare_parameter(

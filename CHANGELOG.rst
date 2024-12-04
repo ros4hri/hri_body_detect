@@ -2,6 +2,15 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* gesture detection
+  Implemented gesture detection for the detected bodies.
+* use uncompressed images by default
+* use launch file with pal args
+* support compressed images
+* Contributors: Luka Juricic, lorenzoferrini
+
 3.1.5 (2024-10-07)
 ------------------
 * moving initialization of the internal processing stamp

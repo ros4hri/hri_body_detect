@@ -30,6 +30,9 @@ import subprocess
 import threading
 import random
 import ament_index_python
+from dataclasses import dataclass
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 
 import rclpy
 from rclpy.node import Node
@@ -42,7 +45,7 @@ from builtin_interfaces.msg import Time as TimeInterface
 from std_msgs.msg import Header
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image, JointState
 from hri_msgs.msg import Skeleton2D, NormalizedPointOfInterest2D, \
-    NormalizedRegionOfInterest2D, IdsList
+    NormalizedRegionOfInterest2D, IdsList, Gesture
 from geometry_msgs.msg import TwistStamped, PointStamped, TransformStamped
 
 from google.protobuf.pyext._message import RepeatedCompositeContainer
@@ -63,10 +66,13 @@ MIN_CUTOFF_VELOCITY = 0.5
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
 PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
+GestureRecognizer = mp.tasks.vision.GestureRecognizer
+GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
 VisionRunningMode = mp.tasks.vision.RunningMode
 
 # Mediapipe parameters
 MP_MODEL_PATH = directory + '/weights/pose_landmarker_full.task'
+MP_GESTURES_MODEL_PATH = directory + '/weights/gesture_recognizer.task'
 MP_MAX_NUM_PEOPLE = 5
 MP_HOL_TRACKING_CONFIDENCE = 0.5
 
@@ -126,6 +132,32 @@ ros4hri_to_mediapipe[Skeleton2D.RIGHT_WRIST] = MP_RIGHT_WRIST
 ros4hri_to_mediapipe[Skeleton2D.RIGHT_HIP] = MP_RIGHT_HIP
 ros4hri_to_mediapipe[Skeleton2D.RIGHT_KNEE] = MP_RIGHT_KNEE
 ros4hri_to_mediapipe[Skeleton2D.RIGHT_ANKLE] = MP_RIGHT_ANKLE
+
+# Mediapipe to hri_msgs Gesture constants
+mediapipe_gesture_to_hri = {}
+mediapipe_gesture_to_hri["Hands_On_Face"] = Gesture.HANDS_ON_FACE
+mediapipe_gesture_to_hri["Arms_Crossed"] = Gesture.ARMS_CROSSED
+mediapipe_gesture_to_hri["Left_Hand_Raised"] = Gesture.LEFT_HAND_RAISED
+mediapipe_gesture_to_hri["Right_Hand_Raised"] = Gesture.RIGHT_HAND_RAISED
+mediapipe_gesture_to_hri["Both_Hands_Raised"] = Gesture.BOTH_HANDS_RAISED
+mediapipe_gesture_to_hri["Waving"] = Gesture.WAVING
+mediapipe_gesture_to_hri["Closed_Fist"] = Gesture.CLOSED_FIST
+mediapipe_gesture_to_hri["Open_Palm"] = Gesture.OPEN_PALM
+mediapipe_gesture_to_hri["Pointing_Up"] = Gesture.POINTING_UP
+mediapipe_gesture_to_hri["Thumb_Down"] = Gesture.THUMB_DOWN
+mediapipe_gesture_to_hri["Thumb_Up"] = Gesture.THUMB_UP
+mediapipe_gesture_to_hri["Victory"] = Gesture.VICTORY
+mediapipe_gesture_to_hri["ILoveYou"] = Gesture.LOVE
+mediapipe_gesture_to_hri["Other"] = Gesture.OTHER
+mediapipe_gesture_to_hri["None"] = Gesture.OTHER
+mediapipe_gesture_to_hri[None] = Gesture.OTHER
+
+mediapipe_handedness_to_hri = {}
+mediapipe_handedness_to_hri["Right"] = Gesture.RIGHT
+mediapipe_handedness_to_hri["Left"] = Gesture.LEFT
+mediapipe_handedness_to_hri["Independent"] = Gesture.INDEPENDENT
+mediapipe_handedness_to_hri["None"] = Gesture.INDEPENDENT
+mediapipe_handedness_to_hri[None] = Gesture.INDEPENDENT
 
 # Mediapipe face mesh indexing (partial)
 FM_NOSE = 1
@@ -229,6 +261,23 @@ def _builtin_time_to_secs(time: TimeInterface) -> float:
     return time.sec+(time.nanosec/1e9)
 
 
+def _find_optimal_coupling(A, B):
+    """Hungarian algorithm."""
+    distance_matrix = cdist(A, B, metric='euclidean')
+    row_ind, col_ind = linear_sum_assignment(distance_matrix)
+
+    return row_ind, col_ind
+
+
+@dataclass
+class SingleHand:
+    """Class representing a single hand."""
+
+    landmarks: list
+    handedness: str
+    gesture: str
+
+
 class SingleBody:
     """Class managing the single body processing."""
 
@@ -299,6 +348,12 @@ class SingleBody:
             twist_topic,
             1)
 
+        gesture_topic = "/humans/bodies/"+body_id+"/gesture"
+        self.gesture_pub = self.node.create_publisher(
+            Gesture,
+            gesture_topic,
+            1)
+
         self.body_position_estimation = [None] * 3
         # trans_vec ==> vector representing the translational component
         # of the homoegenous transform obtained solving the PnP problem
@@ -319,6 +374,9 @@ class SingleBody:
 
         self.one_euro_filter = [None] * 3
         self.one_euro_filter_dot = [None] * 3
+
+        self.left_hand = None
+        self.right_hand = None
 
         self.skeleton_generation()
 
@@ -942,12 +1000,30 @@ class SingleBody:
 
         self.roi_pub.publish(roi)
 
+        gesture = self.left_hand \
+            if self.left_hand is not None and self.left_hand.gesture != "None" \
+            else self.right_hand
+        gesture_value = mediapipe_gesture_to_hri[gesture.gesture] \
+            if gesture is not None \
+            else mediapipe_gesture_to_hri[gesture]
+        handedness_value = mediapipe_handedness_to_hri[gesture.handedness] \
+            if gesture is not None and gesture.gesture != "None" \
+            else mediapipe_handedness_to_hri["None"]
+
+        gesture_msg = Gesture(
+            header=header,
+            gesture=gesture_value,
+            handedness=handedness_value)
+
+        self.gesture_pub.publish(gesture_msg)
+
     def __del__(self):
         self.node.destroy_publisher(self.roi_pub)
         self.node.destroy_publisher(self.skel_pub)
         self.node.destroy_publisher(self.js_pub)
         self.node.destroy_publisher(self.body_filtered_position_pub)
         self.node.destroy_publisher(self.velocity_pub)
+        self.node.destroy_publisher(self.gesture_pub)
 
 
 class MultibodyDetector:
@@ -978,6 +1054,17 @@ class MultibodyDetector:
             min_tracking_confidence=MP_HOL_TRACKING_CONFIDENCE)
 
         self.pose_detector = PoseLandmarker.create_from_options(self.options)
+
+        # Gesture recognition
+        self.gesture_options = GestureRecognizerOptions(
+            base_options=BaseOptions(model_asset_path=MP_GESTURES_MODEL_PATH),
+            running_mode=VisionRunningMode.VIDEO,
+            num_hands=2*MP_MAX_NUM_PEOPLE)
+
+        self.gesture_options.canned_gesture_classifier_options.category_denylist = []
+        self.gesture_options.canned_gesture_classifier_options.score_threshold = 0.5
+
+        self.gesture_recognizer = GestureRecognizer.create_from_options(self.gesture_options)
 
         self.processing_lock = threading.Lock()
         self.skipped_images = 0
@@ -1053,6 +1140,60 @@ class MultibodyDetector:
 
         self.node.get_logger().info("MultiBodyDetector initalized")
 
+    def associate_hands_and_bodies(self,
+                                   gesture_results,
+                                   wrists_bodies,
+                                   wrists_hands,
+                                   wrists_ids,
+                                   bodies_rois,
+                                   handedness):
+        if handedness != 'Left' and handedness != 'Right':
+            return
+
+        row_ind = []
+        col_ind = []
+        row_ind, col_ind = _find_optimal_coupling(
+            list(wrists_bodies.values()), wrists_hands)
+        bodies_with_hand_ids = list(wrists_bodies.keys())
+        bodies_with_hand_ids = [bodies_with_hand_ids[idx]
+                                for idx, _ in enumerate(bodies_with_hand_ids) if idx in row_ind]
+        hands_ids = [wrists_ids[hand_id] for hand_id in col_ind]
+        for idx, hand_id in enumerate(hands_ids):
+            denormalized_x = int(gesture_results.hand_landmarks[hand_id][0].x*self.img_width)
+            denormalized_y = int(gesture_results.hand_landmarks[hand_id][0].y*self.img_height)
+            denormalized_hand_coord = np.array([denormalized_x,
+                                                denormalized_y])
+            if bodies_with_hand_ids[idx] in bodies_rois:
+                roi_min_coords = bodies_rois[bodies_with_hand_ids[idx]][0:2]
+                roi_max_coords = bodies_rois[bodies_with_hand_ids[idx]][2:]
+                correction_sign = +1
+                denormalized_x_min_abs = np.abs(denormalized_hand_coord[0]-roi_min_coords[0])
+                denormalized_x_max_abs = np.abs(denormalized_hand_coord[0]-roi_max_coords[0])
+                if denormalized_x_min_abs > denormalized_x_max_abs:
+                    correction_sign = -1
+                correction_term = int(correction_sign*0.01*self.img_width)
+                denormalized_hand_coord[0] += correction_term
+                if not (np.all(denormalized_hand_coord >= roi_min_coords) and
+                        np.all(denormalized_hand_coord <= roi_max_coords)):
+                    if handedness == 'Left':
+                        self.bodies[bodies_with_hand_ids[idx]].left_hand = None
+                    else:
+                        self.bodies[bodies_with_hand_ids[idx]].right_hand = None
+                    continue
+            else:
+                if handedness == 'Left':
+                    self.bodies[bodies_with_hand_ids[idx]].left_hand = None
+                else:
+                    self.bodies[bodies_with_hand_ids[idx]].right_hand = None
+                continue
+            hand = SingleHand(gesture_results.hand_landmarks[hand_id],
+                              handedness,
+                              gesture_results.gestures[hand_id][0].category_name)
+            if handedness == 'Left':
+                self.bodies[bodies_with_hand_ids[idx]].left_hand = hand
+            else:
+                self.bodies[bodies_with_hand_ids[idx]].right_hand = hand
+
     def detect(self,
                image_rgb: Image,
                header: Header):
@@ -1079,6 +1220,7 @@ class MultibodyDetector:
         rgb_frame = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
 
         results = None
+        gesture_results = []
 
         # we don't use the time in the header to make sure it is monotically increasing
         # a requirement from mediapipe
@@ -1086,7 +1228,10 @@ class MultibodyDetector:
         if frame_timestamp_ms > self.last_frame_timestamp_ms:
             self.last_frame_timestamp_ms = frame_timestamp_ms
             try:
-                results = self.pose_detector.detect_for_video(rgb_frame, frame_timestamp_ms)
+                results = self.pose_detector.detect_for_video(
+                    rgb_frame, frame_timestamp_ms)
+                gesture_results = self.gesture_recognizer.recognize_for_video(
+                    rgb_frame, frame_timestamp_ms)
             except RuntimeError as err:
                 if 'InverseMatrixCalculator' in str(err):
                     self.node.get_logger().warning(
@@ -1225,11 +1370,75 @@ class MultibodyDetector:
         # we process the rest of the body attributes(e.g. skeleton2d)
         # As ROI, we use the input bounding box to the tracker dets_array, but the
         # output_dict[body_id] could be chosen to use the bounding boxes from the tracker
+        left_wrists_bodies = {}  # The wrists coordinates from the skeleton detection
+        right_wrists_bodies = {}
+        left_wrists_hands = []  # The wrists coordinates from the hand detection
+        right_wrists_hands = []
+        bodies_rois = {}
         for i in input_entry_to_body_id:
             body_id = input_entry_to_body_id[i]
-            self.bodies[body_id].process(
-                pose_kpt_list[i], pose_kpt_world_list[i], dets_array[i, :4],
-                header, self.rgb_info, self.depth_info, self.image_depth)
+            # if the wrist coordinates from the skeleton are not out of the frame
+            # we store them to evaluate which hand they correspond to
+            if ((pose_kpt_list[i][MP_LEFT_WRIST]['x'] >= 0)
+               and (pose_kpt_list[i][MP_LEFT_WRIST]['x'] < 1)
+               and (pose_kpt_list[i][MP_LEFT_WRIST]['y'] >= 0)
+               and (pose_kpt_list[i][MP_LEFT_WRIST]['y'] < 1)):
+                left_wrists_bodies[body_id] = np.array([pose_kpt_list[i][MP_LEFT_WRIST]['x'],
+                                                        pose_kpt_list[i][MP_LEFT_WRIST]['y']])
+            if ((pose_kpt_list[i][MP_RIGHT_WRIST]['x'] >= 0)
+               and (pose_kpt_list[i][MP_RIGHT_WRIST]['x'] < 1)
+               and (pose_kpt_list[i][MP_RIGHT_WRIST]['y'] >= 0)
+               and (pose_kpt_list[i][MP_RIGHT_WRIST]['y'] < 1)):
+                right_wrists_bodies[body_id] = np.array([pose_kpt_list[i][MP_RIGHT_WRIST]['x'],
+                                                         pose_kpt_list[i][MP_RIGHT_WRIST]['y']])
+            bodies_rois[body_id] = dets_array[i, :4]
+
+        left_wrists_ids = []  # we store an ID corresponding to the detected hands
+        right_wrists_ids = []
+        for idx, handedness in enumerate(gesture_results.handedness):
+            if handedness[0].category_name == 'Left':
+                left_wrists_hands.append(np.array(
+                                [gesture_results.hand_landmarks[idx][0].x,
+                                 gesture_results.hand_landmarks[idx][0].y]))
+                left_wrists_ids.append(idx)
+            elif handedness[0].category_name == 'Right':
+                right_wrists_hands.append(np.array(
+                                [gesture_results.hand_landmarks[idx][0].x,
+                                 gesture_results.hand_landmarks[idx][0].y]))
+                right_wrists_ids.append(idx)
+
+        if len(gesture_results.gestures) == len(gesture_results.handedness):
+            if (len(left_wrists_hands) != 0) and (len(left_wrists_bodies) != 0):
+                self.associate_hands_and_bodies(
+                    gesture_results,
+                    left_wrists_bodies,
+                    left_wrists_hands,
+                    left_wrists_ids,
+                    bodies_rois,
+                    'Left')
+            else:
+                for body in self.bodies:
+                    self.bodies[body].left_hand = None
+            if (len(right_wrists_hands) != 0) and (len(right_wrists_bodies) != 0):
+                self.associate_hands_and_bodies(
+                    gesture_results,
+                    right_wrists_bodies,
+                    right_wrists_hands,
+                    right_wrists_ids,
+                    bodies_rois,
+                    'Right')
+            else:
+                for body in self.bodies:
+                    self.bodies[body].right_hand = None
+
+        self.ids_pub.publish(body_ids_list)
+
+        for i in input_entry_to_body_id:
+            body_id = input_entry_to_body_id[i]
+            if body_id in self.bodies:
+                self.bodies[body_id].process(
+                    pose_kpt_list[i], pose_kpt_world_list[i], dets_array[i, :4],
+                    header, self.rgb_info, self.depth_info, self.image_depth)
 
         # Remove bodies that have not been present for a while
         bodies_to_remove = []
@@ -1244,8 +1453,6 @@ class MultibodyDetector:
         for body in bodies_to_remove:
             if body in self.bodies:
                 del self.bodies[body]
-
-        self.ids_pub.publish(body_ids_list)
 
         self.detection_proc_duration = (
             self.node.get_clock().now() - self.detection_start_proc_time)

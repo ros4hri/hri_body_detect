@@ -2,6 +2,13 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* added mask to avoid NaN values in depth image
+  added mask size as a global variable
+  modified global variable MASK_SIZE to be in rs_to_depth
+* Contributors: Juan Diego
+
 3.2.0 (2024-12-04)
 ------------------
 * gesture detection

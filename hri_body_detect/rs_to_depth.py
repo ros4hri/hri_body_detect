@@ -15,6 +15,8 @@
 import numpy as np
 from image_geometry import PinholeCameraModel
 
+MASK_SIZE = 20
+
 
 class DepthComputationError(Exception):
     def __init__(self,
@@ -39,6 +41,8 @@ def rgb_to_xyz(
     depth_model.fromCameraInfo(depth_camera_info)
     rgb_model.fromCameraInfo(rgb_camera_info)
 
+    half_mask = MASK_SIZE // 2
+
     x_rgb = x_rgb + (roi_xmin * rgb_model.width)
     y_rgb = y_rgb + (roi_ymin * rgb_model.height)
 
@@ -58,21 +62,23 @@ def rgb_to_xyz(
 
     try:
         if depth_data_encoding == '32FC1':
-            # Get depth data encoded as 32bit/m
-            z = depth_data[y_d][x_d]
+            mask = depth_data[max(0, y_d - half_mask):min(depth_data.shape[0], y_d + half_mask + 1),
+                              max(0, x_d - half_mask):min(depth_data.shape[1], x_d + half_mask + 1)]
+            z = np.nanmean(mask)
         elif depth_data_encoding == '16UC1':
-            # Convert depth data encoded as 16bit/mm to m
-            z = depth_data[y_d][x_d]/1000
+            mask = depth_data[max(0, y_d - half_mask):min(depth_data.shape[0], y_d + half_mask + 1),
+                              max(0, x_d - half_mask):min(depth_data.shape[1], x_d + half_mask + 1)]
+            z = np.nanmean(mask) / 1000.0
         else:
             raise ValueError('Unexpected encoding {}. '.format(depth_data_encoding) +
                              'Depth encoding should be 16UC1 or `32FC1`.')
     except IndexError:
-        raise(DepthComputationError())
+        raise (DepthComputationError())
 
     if np.isnan(z):
         z = 0.0
 
-    x = (x_d - depth_model.cx())*z/depth_model.fx()
-    y = (y_d - depth_model.cy())*z/depth_model.fy()
+    x = (x_d - depth_model.cx()) * z / depth_model.fx()
+    y = (y_d - depth_model.cy()) * z / depth_model.fy()
 
     return np.array([x, y, z])

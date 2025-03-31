@@ -55,6 +55,7 @@ import cv2
 
 directory = ament_index_python.get_package_share_directory('hri_body_detect')
 
+
 # One Euro Filter parameters
 BETA_POSITION = 0.05
 D_CUTOFF_POSITION = 0.5

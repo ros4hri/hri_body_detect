@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.3.0 (2025-03-31)
+------------------
 * added mask to avoid NaN values in depth image
   added mask size as a global variable
   modified global variable MASK_SIZE to be in rs_to_depth

@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.3.1 (2025-05-02)
+------------------
 * shutdown the whole launch file on crash
 * Contributors: Séverin Lemaignan
 

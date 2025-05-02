@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from launch import LaunchDescription
-from launch.actions import EmitEvent, RegisterEventHandler
+from launch.actions import EmitEvent, RegisterEventHandler, Shutdown
 from launch.events import matches_action
 from launch_pal import get_pal_configuration
 from launch_ros.actions import LifecycleNode
@@ -39,7 +39,10 @@ def generate_launch_description():
         parameters=config["parameters"],
         remappings=config["remappings"],
         arguments=config["arguments"],
-        output='both', emulate_tty=True)
+        output='both',
+        emulate_tty=True,
+        on_exit=Shutdown()
+    )
 
     configure_event = EmitEvent(event=ChangeState(
         lifecycle_node_matcher=matches_action(node),

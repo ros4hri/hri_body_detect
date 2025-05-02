@@ -2,6 +2,11 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* shutdown the whole launch file on crash
+* Contributors: Séverin Lemaignan
+
 3.3.0 (2025-03-31)
 ------------------
 * added mask to avoid NaN values in depth image

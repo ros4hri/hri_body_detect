@@ -458,6 +458,78 @@ class SingleBody:
         self.proc.wait()
         self.node.get_logger().info('unregistered '+self.body_id)
 
+    def compute_trans_vec(self, pose_kpt):
+        """Compute the translation vector from the face pose estimation."""
+        for idx, landmark in enumerate(pose_kpt):
+            if idx == MP_NOSE:
+                nose_tip = [landmark["x"], landmark["y"]]
+            if idx == MP_LEFT_MOUTH:
+                mouth_left = [landmark["x"], landmark["y"]]
+            if idx == MP_RIGHT_MOUTH:
+                mouth_right = [landmark["x"], landmark["y"]]
+            if idx == MP_RIGHT_EYE:
+                right_eye = [landmark["x"], landmark["y"]]
+            if idx == MP_RIGHT_EAR:
+                right_ear_tragion = [landmark["x"], landmark["y"]]
+            if idx == MP_LEFT_EYE:
+                left_eye = [landmark["x"], landmark["y"]]
+            if idx == MP_LEFT_EAR:
+                left_ear_tragion = [landmark["x"], landmark["y"]]
+
+        mouth_center = [(mouth_left[0] + mouth_right[0])/2,
+                        (mouth_left[1] + mouth_right[1])/2]
+
+        points_2D = np.array([
+            _normalized_to_pixel_coordinates(
+                nose_tip[0],
+                nose_tip[1],
+                self.img_width,
+                self.img_height),
+            _normalized_to_pixel_coordinates(
+                right_eye[0],
+                right_eye[1],
+                self.img_width,
+                self.img_height),
+            _normalized_to_pixel_coordinates(
+                left_eye[0],
+                left_eye[1],
+                self.img_width,
+                self.img_height),
+            _normalized_to_pixel_coordinates(
+                mouth_center[0],
+                mouth_center[1],
+                self.img_width,
+                self.img_height),
+            _normalized_to_pixel_coordinates(
+                right_ear_tragion[0],
+                right_ear_tragion[1],
+                self.img_width,
+                self.img_height),
+            _normalized_to_pixel_coordinates(
+                left_ear_tragion[0],
+                left_ear_tragion[1],
+                self.img_width,
+                self.img_height)],
+            dtype="double")
+
+        self.trans_vec, self.angles = \
+            face_pose_estimation(points_2D, self.K)
+
+        if not self.trans_vec[0] \
+                or not self.trans_vec[1] \
+                or not self.trans_vec[2]:
+            self.valid_trans_vec = False
+        elif np.isnan(self.trans_vec[0]) \
+                or np.isnan(self.trans_vec[1]) \
+                or np.isnan(self.trans_vec[2]):
+            if not self.calibrated_camera:
+                self.trans_vec = np.zeros(3)
+                self.valid_trans_vec = True
+            else:
+                self.valid_trans_vec = False
+        else:
+            self.valid_trans_vec = True
+
     def face_to_body_position_estimation(self,
                                          skel_msg: Skeleton2D) -> (float, float, float):
         """Estimates body pose from face pose estimation."""
@@ -769,10 +841,25 @@ class SingleBody:
                 self.depth_encoding,
                 self.image_depth
             )
+            if not torso_res.any():
+                self.compute_trans_vec(pose_2d)
+                if self.valid_trans_vec and self.calibrated_camera:
+                    self.node.get_logger().warn(
+                        "Body %s: depth estimation failed, using 2D pose estimation" % body_id)
+                    torso_res = self.face_to_body_position_estimation(
+                        _make_2d_skeleton_msg(header, pose_2d))
+                else:
+                    self.node.get_logger().warn(
+                        "Body %s: 3D position estimation failed, the body distance "
+                        "from the camera is not known, setting to zero" % body_id)
+
         elif self.body_position_estimation[0]:
             torso_res = self.body_position_estimation
         else:
             torso_res = np.array([0., 0., 0.])
+            self.node.get_logger().warn(
+                        "Body %s: 3D position estimation failed, the body distance "
+                        "from the camera is not known, setting to zero" % body_id)
 
         # Publishing tf transformations #
 
@@ -896,76 +983,7 @@ class SingleBody:
         if not self.use_depth and hasattr(self, "K"):
             # K = camera intrisic matrix. See method camera_info_callback
             #     to understand more about it
-            for idx, landmark in enumerate(pose_kpt):
-
-                if idx == MP_NOSE:
-                    nose_tip = [landmark["x"], landmark["y"]]
-                if idx == MP_LEFT_MOUTH:
-                    mouth_left = [landmark["x"], landmark["y"]]
-                if idx == MP_RIGHT_MOUTH:
-                    mouth_right = [landmark["x"], landmark["y"]]
-                if idx == MP_RIGHT_EYE:
-                    right_eye = [landmark["x"], landmark["y"]]
-                if idx == MP_RIGHT_EAR:
-                    right_ear_tragion = [landmark["x"], landmark["y"]]
-                if idx == MP_LEFT_EYE:
-                    left_eye = [landmark["x"], landmark["y"]]
-                if idx == MP_LEFT_EAR:
-                    left_ear_tragion = [landmark["x"], landmark["y"]]
-
-            mouth_center = [(mouth_left[0] + mouth_right[0])/2,
-                            (mouth_left[1] + mouth_right[1])/2]
-
-            points_2D = np.array([
-                _normalized_to_pixel_coordinates(
-                    nose_tip[0],
-                    nose_tip[1],
-                    self.img_width,
-                    self.img_height),
-                _normalized_to_pixel_coordinates(
-                    right_eye[0],
-                    right_eye[1],
-                    self.img_width,
-                    self.img_height),
-                _normalized_to_pixel_coordinates(
-                    left_eye[0],
-                    left_eye[1],
-                    self.img_width,
-                    self.img_height),
-                _normalized_to_pixel_coordinates(
-                    mouth_center[0],
-                    mouth_center[1],
-                    self.img_width,
-                    self.img_height),
-                _normalized_to_pixel_coordinates(
-                    right_ear_tragion[0],
-                    right_ear_tragion[1],
-                    self.img_width,
-                    self.img_height),
-                _normalized_to_pixel_coordinates(
-                    left_ear_tragion[0],
-                    left_ear_tragion[1],
-                    self.img_width,
-                    self.img_height)],
-                dtype="double")
-
-            self.trans_vec, self.angles = \
-                face_pose_estimation(points_2D, self.K)
-
-            if not self.trans_vec[0] \
-                    or not self.trans_vec[1] \
-                    or not self.trans_vec[2]:
-                self.valid_trans_vec = False
-            elif np.isnan(self.trans_vec[0]) \
-                    or np.isnan(self.trans_vec[1]) \
-                    or np.isnan(self.trans_vec[2]):
-                if not self.calibrated_camera:
-                    self.trans_vec = np.zeros(3)
-                    self.valid_trans_vec = True
-                else:
-                    self.valid_trans_vec = False
-            else:
-                self.valid_trans_vec = True
+            self.compute_trans_vec(pose_kpt)
 
         skel_msg = _make_2d_skeleton_msg(header, pose_kpt)
         if self.valid_trans_vec and not self.use_depth\

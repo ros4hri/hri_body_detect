@@ -62,12 +62,14 @@ def rgb_to_xyz(
 
     try:
         if depth_data_encoding == '32FC1':
-            mask = depth_data[max(0, y_d - half_mask):min(depth_data.shape[0], y_d + half_mask + 1),
-                              max(0, x_d - half_mask):min(depth_data.shape[1], x_d + half_mask + 1)]
+            mask = depth_data[
+                max(0, y_d - half_mask):min(depth_data.shape[0], y_d + half_mask + 1),
+                max(0, x_d - half_mask):min(depth_data.shape[1], x_d + half_mask + 1)]
             z = np.nanmean(mask)
         elif depth_data_encoding == '16UC1':
-            mask = depth_data[max(0, y_d - half_mask):min(depth_data.shape[0], y_d + half_mask + 1),
-                              max(0, x_d - half_mask):min(depth_data.shape[1], x_d + half_mask + 1)]
+            mask = depth_data[
+                max(0, y_d - half_mask):min(depth_data.shape[0], y_d + half_mask + 1),
+                max(0, x_d - half_mask):min(depth_data.shape[1], x_d + half_mask + 1)]
             z = np.nanmean(mask) / 1000.0
         else:
             raise ValueError('Unexpected encoding {}. '.format(depth_data_encoding) +

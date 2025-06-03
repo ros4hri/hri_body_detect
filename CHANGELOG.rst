@@ -2,6 +2,11 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Use torso position from the face when there are no valid depth points
+* Contributors: ferrangebelli
+
 3.3.1 (2025-05-02)
 ------------------
 * shutdown the whole launch file on crash

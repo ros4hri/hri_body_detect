@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.4.0 (2025-06-03)
+------------------
 * Use torso position from the face when there are no valid depth points
 * Contributors: ferrangebelli
 

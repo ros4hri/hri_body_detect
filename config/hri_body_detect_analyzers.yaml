@@ -1,0 +1,11 @@
+/hri_body_detect/add_analyzer_node:
+  ros__parameters:
+    path: Diagnostics
+    social_perception:
+      type: 'diagnostic_aggregator/AnalyzerGroup'
+      path: "Social perception"
+      analyzers:
+        bodies:
+          type: diagnostic_aggregator/GenericAnalyzer
+          path: "Body detection"
+          find_and_remove_prefix: ["/social_perception/bodies"]

@@ -12,8 +12,10 @@
   <maintainer email="lorenzo.ferrini@pal-robotics.com">Lorenzo Ferrini</maintainer>
   <maintainer email="ferran.gebelli@pal-robotics.com">Ferran Gebellí</maintainer>
 
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>builtin_interfaces</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>diagnostic_aggregator</exec_depend>
   <exec_depend>diagnostic_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>hri_msgs</exec_depend>

@@ -20,6 +20,7 @@ setup(
             ['hri_body_detect/weights/pose_landmarker_full.task',
              'hri_body_detect/weights/gesture_recognizer.task']),
         ('share/' + package_name + '/config', ['config/00-defaults.yml']),
+        ('share/' + package_name + '/config', ['config/hri_body_detect_analyzers.yaml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

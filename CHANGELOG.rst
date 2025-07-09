@@ -2,8 +2,8 @@
 Changelog for package hri_body_detect
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.4.1 (2025-07-09)
+------------------
 * Add diagnostic analyzers
 * Contributors: Noel Jimenez
 

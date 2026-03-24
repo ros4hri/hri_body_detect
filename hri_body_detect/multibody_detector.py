@@ -1476,6 +1476,61 @@ class MultibodyDetector:
         self.detection_proc_duration = (
             self.node.get_clock().now() - self.detection_start_proc_time)
 
+    def decode_compressed_depth(self, 
+                                compressed_depth_msg):
+        """Decode compressed depth image."""
+        try:
+            depth_fmt, compr_type = compressed_depth_msg.format.split(';')
+            depth_fmt = depth_fmt.strip()
+            compr_type = compr_type.strip()
+
+            if compr_type != "compressedDepth":
+                raise ValueError(f"Compression type is '{compr_type}', expected 'compressedDepth'")
+
+            png_signature = b'\x89PNG\r\n\x1a\n'
+            depth_header_size = None
+
+            # search for the PNG signature
+            for i in range(100):
+                if bytes(compressed_depth_msg.data[i:i+8]) == png_signature:
+                    depth_header_size = i
+                    break
+            if depth_header_size is None:
+                depth_header_size = 12
+                self.node.get_logger().warning('Could not find PNG signature, using default header size of 12 bytes')
+            elif not hasattr(self, '_depth_header_logged'):
+                self.node.get_logger().debug(f'Detected depth header size: {depth_header_size} bytes')
+                self._depth_header_logged = True
+
+            # remove header from raw data
+            raw_data = compressed_depth_msg.data[depth_header_size:]
+
+            # decode PNG compressed data
+            depth_img_raw = cv2.imdecode(np.frombuffer(raw_data, np.uint8), cv2.IMREAD_UNCHANGED)
+
+            if depth_img_raw is None:
+                raise ValueError(f"Could not decode compressed depth image with header size {depth_header_size}")
+            
+            if depth_fmt == "16UC1":
+                return depth_img_raw, '16UC1'
+                
+            elif depth_fmt == "32FC1": # handle quantized depth format
+                raw_header = compressed_depth_msg.data[:depth_header_size]
+                [compfmt, depthQuantA, depthQuantB] = struct.unpack('iff', raw_header)
+                
+                depth_img_scaled = depthQuantA / (depth_img_raw.astype(np.float32) - depthQuantB)
+                depth_img_scaled[depth_img_raw == 0] = 0
+                
+                return depth_img_scaled, '32FC1'
+            else:
+                raise ValueError(f"Unsupported depth format: {depth_fmt}")
+
+        except Exception as e:
+            self.node.get_logger().error(f"Failed to decode compressedDepth: {e}")
+            import traceback
+            self.node.get_logger().error(traceback.format_exc())
+            return None, None
+
     def image_callback_depth(self,
                              rgb_img: CompressedImage | Image,
                              rgb_info: CameraInfo,
@@ -1488,18 +1543,33 @@ class MultibodyDetector:
             rgb_img = self.br.imgmsg_to_cv2(rgb_img, desired_encoding="bgr8")
 
         if not hasattr(self, 'depth_encoding'):
-            self.depth_encoding = depth_img.encoding
-
-        if self.depth_encoding != '32FC1' and self.depth_encoding != '16UC1':
-            raise ValueError('Unexpected encoding {}. '.format(self.depth_encoding) +
-                             'Depth encoding should be 16UC1 or `32FC1`.')
-
-        if self.image_compressed:
-            self.image_depth = self.br.compressed_imgmsg_to_cv2(
-                depth_img, desired_encoding=self.depth_encoding)
+            if self.image_compressed:
+                # compressed image does not have .encoding attribute
+                # instead it has .format attribute that contains the encoding information
+                depth_decoded, encoding = self.decode_compressed_depth(depth_img)
+                
+                if depth_decoded is None:
+                    self.node.get_logger().error('Failed to decode compressed depth')
+                    return
+                
+                self.depth_encoding = encoding
+                self.image_depth = depth_decoded
+            else:
+                # raw image has .encoding attribute
+                self.depth_encoding = depth_img.encoding
+                if self.depth_encoding != '32FC1' and self.depth_encoding != '16UC1':
+                    raise ValueError('Unexpected encoding {}. '.format(self.depth_encoding) +
+                                    'Depth encoding should be 16UC1 or `32FC1`.')
+                self.image_depth = self.br.imgmsg_to_cv2(depth_img, desired_encoding=self.depth_encoding)
         else:
-            self.image_depth = self.br.imgmsg_to_cv2(
-                depth_img, desired_encoding=self.depth_encoding)
+            if self.image_compressed:
+                depth_decoded, _ = self.decode_compressed_depth(depth_img)
+                if depth_decoded is None: # check this
+                    self.node.get_logger().warning('Failed to decode depth, skipping frame')
+                    return
+                self.image_depth = depth_decoded
+            else:
+                self.image_depth = self.br.imgmsg_to_cv2(depth_img, desired_encoding=self.depth_encoding)
         if _builtin_time_to_secs(depth_info.header.stamp) \
                 > _builtin_time_to_secs(rgb_info.header.stamp):
             header = copy.copy(depth_info.header)

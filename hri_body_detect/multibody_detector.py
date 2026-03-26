@@ -52,6 +52,7 @@ from google.protobuf.pyext._message import RepeatedCompositeContainer
 
 from cv_bridge import CvBridge
 import cv2
+import struct
 
 directory = ament_index_python.get_package_share_directory('hri_body_detect')
 
@@ -1476,36 +1477,22 @@ class MultibodyDetector:
         self.detection_proc_duration = (
             self.node.get_clock().now() - self.detection_start_proc_time)
 
-    def decode_compressed_depth(self, 
-                                compressed_depth_msg):
-        """Decode compressed depth image."""
+    def decode_compressed_depth(self, compressed_depth_msg):
+        """ Decode compressedDepth format. """
         try:
             depth_fmt, compr_type = compressed_depth_msg.format.split(';')
             depth_fmt = depth_fmt.strip()
             compr_type = compr_type.strip()
-
-            if compr_type != "compressedDepth":
+            
+            if "compresseddepth" not in compr_type.lower():
                 raise ValueError(f"Compression type is '{compr_type}', expected 'compressedDepth'")
+            
+            header_fmt = 'iff' # ConfigHeader
+            depth_header_size = struct.calcsize(header_fmt) # 12 bytes
 
-            png_signature = b'\x89PNG\r\n\x1a\n'
-            depth_header_size = None
-
-            # search for the PNG signature
-            for i in range(100):
-                if bytes(compressed_depth_msg.data[i:i+8]) == png_signature:
-                    depth_header_size = i
-                    break
-            if depth_header_size is None:
-                depth_header_size = 12
-                self.node.get_logger().warning('Could not find PNG signature, using default header size of 12 bytes')
-            elif not hasattr(self, '_depth_header_logged'):
-                self.node.get_logger().debug(f'Detected depth header size: {depth_header_size} bytes')
-                self._depth_header_logged = True
-
-            # remove header from raw data
+            raw_header = compressed_depth_msg.data[:depth_header_size]
             raw_data = compressed_depth_msg.data[depth_header_size:]
 
-            # decode PNG compressed data
             depth_img_raw = cv2.imdecode(np.frombuffer(raw_data, np.uint8), cv2.IMREAD_UNCHANGED)
 
             if depth_img_raw is None:
@@ -1514,7 +1501,7 @@ class MultibodyDetector:
             if depth_fmt == "16UC1":
                 return depth_img_raw, '16UC1'
                 
-            elif depth_fmt == "32FC1": # handle quantized depth format
+            elif depth_fmt == "32FC1":
                 raw_header = compressed_depth_msg.data[:depth_header_size]
                 [compfmt, depthQuantA, depthQuantB] = struct.unpack('iff', raw_header)
                 
